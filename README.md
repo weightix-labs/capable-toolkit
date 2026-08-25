@@ -82,26 +82,11 @@ recipe, which you can inspect, copy, or replay.
 ## Installation
 
 ```bash
-pip install capable-toolkit            # core (numpy only)
-```
+python3 -m pip install --upgrade pip
+python3 -m pip install "capable-toolkit[all] @ git+https://github.com/weightix-labs/capable-toolkit.git"
 
-Optional extras for working with real models:
+Requires **Python >= 3.9+**.
 
-```bash
-pip install "capable-toolkit[torch]"   # PyTorch backend
-pip install "capable-toolkit[hf]"      # Hugging Face Transformers + Hub
-pip install "capable-toolkit[vision]"  # Pillow for real image preprocessing
-pip install "capable-toolkit[all]"     # everything above
-pip install "capable-toolkit[dev]"     # pytest + coverage for contributing
-```
-
-> The package imports and runs on a clean laptop with **only numpy**. When
-> `torch`/`transformers` aren't installed, every operation still executes
-> against a deterministic, in-memory simulation backend — so you can prototype
-> pipelines and run the test suite without GPUs, gigabytes of weights, or
-> network access.
-
-Requires **Python 3.9+**.
 
 ---
 
