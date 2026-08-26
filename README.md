@@ -226,7 +226,21 @@ model = optimize("hf", "zai-org/GLM-5.2", target_metric="10x-smaller")
 
 # Quantize to 4 bits
 model = optimize("hf", "zai-org/GLM-5.2", method="quantize", bits=4)
+
+# The optimized checkpoint is exported automatically to ./optimized-model.
+# Choose a publish directory explicitly when preparing a model repository.
+model = optimize(
+  "hf", "zai-org/GLM-5.2", target_metric="4x-smaller",
+  output_dir="./models/glm-optimized",
+)
+print(model.metadata["weights_path"])
 ```
+
+After optimization, the current weights are materialized automatically. Native
+Hugging Face models are written with `save_pretrained`; simulation handles are
+written as `model_weights.npz` with `config.json` and
+`capable_toolkit.json` provenance metadata. Pass `download=False` to defer
+export, or `overwrite=True` to reuse a non-empty output directory.
 
 `target_metric` accepts flexible forms:
 

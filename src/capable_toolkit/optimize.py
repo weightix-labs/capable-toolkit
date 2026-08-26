@@ -100,6 +100,9 @@ def optimize(
     calibration: Optional[List[str]] = None,
     method: str = "prune",
     bits: Optional[int] = None,
+    output_dir: Optional[str] = None,
+    download: bool = True,
+    overwrite: bool = False,
 ) -> CapableModel:
     """Compress a model via structured pruning / quantization.
 
@@ -117,6 +120,13 @@ def optimize(
     bits:
         Bit width for quantization (e.g. 4 or 8). Used when
         ``method="quantize"``.
+    output_dir:
+        Directory where the optimized weights are materialized. Defaults to
+        ``optimized-model`` in the current directory.
+    download:
+        Materialize the optimized weights after applying the transform.
+    overwrite:
+        Allow an existing non-empty ``output_dir`` to be reused.
     """
     model = load_model(source, target)
     ratio = parse_target_metric(target_metric)
@@ -135,6 +145,8 @@ def optimize(
             "optimize", method="quantize", bits=bits, ratio=ratio,
         )
         model.metadata["quantized_bits"] = bits
+        if download:
+            model.download_weights(output_dir, overwrite=overwrite)
         return model
 
     # Pruning path.
@@ -176,6 +188,8 @@ def optimize(
         pruned_heads=len(pruned),
         dropped_blocks=int((~block_mask).sum()),
     )
+    if download:
+        model.download_weights(output_dir, overwrite=overwrite)
     return model
 
 

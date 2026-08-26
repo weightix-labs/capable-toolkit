@@ -16,7 +16,9 @@ from __future__ import annotations
 
 import copy
 import json
+import os
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from . import backend as _backend
@@ -132,6 +134,67 @@ class CapableModel:
 
     def set_param(self, name: str, value) -> None:
         self._params[name] = _backend.to_numpy(value)
+
+    def download_weights(
+        self,
+        destination: Optional[str] = None,
+        *,
+        overwrite: bool = False,
+    ) -> str:
+        """Materialize the current weights as a push-ready model directory.
+
+        Native Hugging Face models use ``save_pretrained`` so the resulting
+        directory can be uploaded directly. The simulation backend writes a
+        portable NumPy checkpoint and the metadata needed to inspect it.
+        """
+        if destination is None:
+            destination = os.environ.get("CAPABLE_TOOLKIT_OUTPUT_DIR", "optimized-model")
+        output = Path(destination).expanduser().resolve()
+        if output.exists() and any(output.iterdir()) and not overwrite:
+            raise FileExistsError(
+                f"Model output directory is not empty: {output}. "
+                "Pass overwrite=True to replace its contents."
+            )
+        output.mkdir(parents=True, exist_ok=True)
+
+        native_model = self.metadata.get("native_model")
+        if native_model is not None and hasattr(native_model, "save_pretrained"):
+            native_model.save_pretrained(str(output), safe_serialization=True)
+            tokenizer = self.metadata.get("native_tokenizer")
+            if tokenizer is not None and hasattr(tokenizer, "save_pretrained"):
+                tokenizer.save_pretrained(str(output))
+        else:
+            np = _backend.get_numpy()
+            np.savez_compressed(output / "model_weights.npz", **self._params)
+            (output / "config.json").write_text(
+                json.dumps(
+                    {"dim": self.dim, "layers": self.layers, "vocab_size": self.vocab_size},
+                    indent=2,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+        serializable_metadata = {
+            key: value
+            for key, value in self.metadata.items()
+            if key not in {"native_model", "native_tokenizer"}
+        }
+        (output / "capable_toolkit.json").write_text(
+            json.dumps(
+                {
+                    "source": self.source.describe(),
+                    "recipe": self.recipe(),
+                    "metadata": serializable_metadata,
+                },
+                indent=2,
+                default=str,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        self.metadata["weights_path"] = str(output)
+        return str(output)
 
     def apply_transform(self, name: str, **params: Any) -> "CapableModel":
         """Record a transform and return self (for chaining)."""
